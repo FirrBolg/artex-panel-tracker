@@ -1,0 +1,50 @@
+{
+"2026-11-06": {
+"active": 455,
+"listed": 470,
+"http": 369,
+"by_family": {
+"ARTEX original (Chinese)": 339,
+"AntiFox": 17,
+"ARTEX (other build)": 2,
+"ScopeWeaver": 36,
+"ARTEX English translation": 18,
+"ARTEX Global (English)": 28,
+"NOVA 213 (no public repo)": 1,
+"Unknown (no public repo)": 4,
+"渗透工作台 (no public repo)": 1,
+"ARTIFEX": 1,
+"HekerAI (no public repo)": 1,
+"ExploitFinder (no public repo)": 1,
+"Cybrion (no public repo)": 2,
+"观澜SEC (no public repo)": 1,
+"artex-mx (no public repo)": 1,
+"Bob Research Labs (no public repo)": 1,
+"LUCK (no public repo)": 1
+}
+},
+"2026-11-07": {
+"active": 517,
+"listed": 532,
+"http": 423,
+"by_family": {
+"AntiFox": 23,
+"ARTEX original (Chinese)": 392,
+"ARTEX (other build)": 3,
+"ScopeWeaver": 38,
+"ARTEX English translation": 18,
+"ARTEX Global (English)": 28,
+"NOVA 213 (no public repo)": 1,
+"Unknown (no public repo)": 4,
+"渗透工作台 (no public repo)": 1,
+"ARTIFEX": 1,
+"HekerAI (no public repo)": 1,
+"Cybrion (no public repo)": 2,
+"ExploitFinder (no public repo)": 1,
+"观澜SEC (no public repo)": 1,
+"artex-mx (no public repo)": 1,
+"Bob Research Labs (no public repo)": 1,
+"LUCK (no public repo)": 1
+}
+}
+}

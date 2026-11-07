@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ARTEX Panel Feed</title>
+<meta name="description" content="Automatically updated feed of internet-exposed ARTEX console login pages seen in public internet-scan data.">
+<style>
+  :root {
+    --bg: #fbfaf7; --surface: #ffffff; --text: #1d1d1b; --muted: #5f5e58;
+    --border: #e4e1d8; --accent: #2f6b4f; --accent-soft: #e6f0ea; --code-bg: #f2f0ea;
+    --warn: #8a5a00; --warn-soft: #fbf1dc;
+    --grid: #ebe8e0; --other: #b4b2a9;
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300; --s7: #6250d6;
+    --mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #151614; --surface: #1d1f1c; --text: #e8e6df; --muted: #a3a197;
+      --border: #30332e; --accent: #7fc4a0; --accent-soft: #1f3128; --code-bg: #232622;
+      --warn: #e7b85c; --warn-soft: #2e2615;
+      --grid: #2b2e29; --other: #6b6a63;
+      --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #151614; --surface: #1d1f1c; --text: #e8e6df; --muted: #a3a197;
+    --border: #30332e; --accent: #7fc4a0; --accent-soft: #1f3128; --code-bg: #232622;
+    --warn: #e7b85c; --warn-soft: #2e2615;
+    --grid: #2b2e29; --other: #6b6a63;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1180px; margin: 0 auto; padding: 32px 16px 80px; }
+  h1 { font-size: clamp(26px, 5vw, 34px); margin: 0 0 6px; line-height: 1.2; }
+  h2 { font-size: 19px; margin: 36px 0 14px; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+  .muted { color: var(--muted); }
+  .stats { display: flex; flex-wrap: wrap; gap: 8px 24px; font-size: 14px; color: var(--muted); margin-bottom: 16px; }
+  .stats b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .downloads { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 14px; margin: -8px 0 20px; }
+  .downloads a { color: var(--accent); }
+  .note { background: var(--warn-soft); color: var(--text); border-left: 3px solid var(--warn); padding: 10px 14px; border-radius: 6px; font-size: 14px; margin-bottom: 8px; }
+
+  /* tabs */
+  .tabs { display: flex; gap: 8px; margin: 20px 0; }
+  .tabs button { font: inherit; font-size: 15px; font-weight: 600; padding: 9px 18px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); border-radius: 999px; cursor: pointer; display: inline-flex;
+    align-items: center; gap: 7px; transition: background .12s, border-color .12s; }
+  .tabs button:hover { border-color: var(--accent); }
+  .tabs button[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tabs button[aria-selected="true"] { color: #0b0b0b; } }
+  :root[data-theme="dark"] .tabs button[aria-selected="true"] { color: #0b0b0b; }
+  .tabs .hint { font-weight: 400; font-size: 12px; opacity: .8; }
+  @media (max-width: 440px) { .tabs .hint { display: none; } }
+  [hidden] { display: none !important; }
+
+  /* analysis */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .tile .k { font-size: 12px; color: var(--muted); }
+  .tile .v { font-size: 26px; font-weight: 650; font-variant-numeric: tabular-nums; line-height: 1.25; }
+  .tile .d { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+  .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+  .panel.wide { grid-column: 1 / -1; }
+  .panel h3 { font-size: 15px; margin: 0 0 2px; }
+  .panel p.cap { font-size: 12px; color: var(--muted); margin: 0 0 10px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  svg.chart { width: 100%; height: auto; display: block; overflow: visible; }
+  svg.chart text { fill: var(--muted); font: 11px system-ui, sans-serif; }
+  svg.chart text.val { fill: var(--text); font-variant-numeric: tabular-nums; }
+  svg.chart .gridline { stroke: var(--grid); stroke-width: 1; }
+  svg.chart .hit { fill: transparent; cursor: pointer; }
+  svg.chart .hit:hover + .bar, svg.chart g.row:hover .bar { opacity: .8; }
+  .tip { position: fixed; pointer-events: none; background: var(--surface); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.12); z-index: 10; max-width: 280px; }
+  .tip b { font-variant-numeric: tabular-nums; }
+  .tip .row { display: flex; align-items: center; gap: 6px; }
+  .tip i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+  .lineage { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .lineage th, .lineage td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .lineage th { color: var(--muted); font-weight: 500; font-size: 12px; }
+  .lineage td.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .lineage a { color: var(--accent); }
+  .table-wrap { overflow-x: auto; }
+
+  /* feed */
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  input, select, .controls button { font: inherit; font-size: 14px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); }
+  input { flex: 1 1 240px; min-width: 0; }
+  select { max-width: 100%; }
+  .controls button { cursor: pointer; color: var(--accent); }
+  .count { font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+  @media (max-width: 380px) { .grid { grid-template-columns: 1fr; } .charts { grid-template-columns: 1fr; } }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
+  .card.stale { opacity: .6; }
+  .shot { display: block; aspect-ratio: 16 / 10; background: var(--code-bg); overflow: hidden; }
+  .shot img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+  .shot.noshot { display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; text-decoration: none; }
+  .body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+  .title { font-weight: 600; font-size: 15px; line-height: 1.35; overflow-wrap: anywhere; }
+  .host { font-family: var(--mono); font-size: 13px; overflow-wrap: anywhere; }
+  .meta { font-size: 13px; color: var(--muted); }
+  .meta a { color: var(--accent); }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip { font-size: 11px; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+  .chip.fresh { background: var(--warn-soft); color: var(--warn); }
+  .chip.stale { background: var(--code-bg); color: var(--muted); }
+  details { font-size: 13px; margin-top: 4px; }
+  summary { cursor: pointer; color: var(--accent); }
+  details ul { margin: 6px 0 0; padding-left: 18px; font-family: var(--mono); font-size: 12px; }
+  details li { overflow-wrap: anywhere; }
+  .links { margin-top: auto; padding-top: 6px; font-size: 13px; }
+  .links a { color: var(--accent); }
+  .empty { color: var(--muted); padding: 40px 0; text-align: center; }
+  footer { margin-top: 48px; font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>ARTEX Panel Feed</h1>
+  <p class="sub">ARTEX console login pages seen in public internet-scan data. Rebuilt automatically every hour.</p>
+
+  <div class="stats" id="stats">Loading…</div>
+  <div class="note" id="stale-banner" hidden></div>
+  <div class="downloads"><span class="muted">Download:</span>
+    <a href="blocklist.txt">Blocklist (IPs + domains)</a>
+    <a href="panels.csv">CSV</a>
+    <a href="feed.xml">RSS — new panels</a>
+    <a href="feed.json">JSON</a>
+  </div>
+
+  <div class="note">A listing means the page matches ARTEX fingerprints, nothing more. Some are demos, research labs or security firms. Screenshots and details come from <strong>public</strong> scan data; this site never connects to the panels, and nothing behind a login is captured.</div>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tab-panels" aria-selected="true" aria-controls="view-panels">🗂 Panels</button>
+    <button role="tab" id="tab-analysis" aria-selected="false" aria-controls="view-analysis">📊 Analysis <span class="hint">charts &amp; trends</span></button>
+  </div>
+
+  <section id="view-analysis" role="tabpanel" aria-labelledby="tab-analysis" hidden>
+    <div class="tiles" id="tiles"></div>
+    <div class="charts">
+      <div class="panel wide">
+        <h3>New panels per day</h3>
+        <p class="cap">Hosts first seen by this tracker each day (last 30 days; 14 on small screens), by fork lineage. Hover a bar for the breakdown.</p>
+        <div class="legend" id="leg-daily"></div>
+        <svg class="chart" id="ch-daily" role="img" aria-label="Stacked bar chart of new panels per day by lineage"></svg>
+      </div>
+      <div class="panel wide">
+        <h3>Active panels over time</h3>
+        <p class="cap">Hosts seen in the 14 days before each daily snapshot, and how many of those serve their login over plain http.</p>
+        <div class="legend" id="leg-trend"></div>
+        <div id="trend-wrap"><svg class="chart" id="ch-trend" role="img" aria-label="Line chart of active panels per day"></svg></div>
+      </div>
+      <div class="panel">
+        <h3>Panels by fork lineage</h3>
+        <p class="cap">All hosts currently listed. Click a bar to filter the panel list.</p>
+        <svg class="chart" id="ch-family" role="img" aria-label="Panels by fork lineage"></svg>
+      </div>
+      <div class="panel">
+        <h3>Spawning fastest: last 7 days vs previous 7</h3>
+        <p class="cap">New hosts per lineage: coloured bar = last 7 days, grey bar above it = the 7 days before. Days when a new data source was switched on are left out. Click a bar to filter.</p>
+        <svg class="chart" id="ch-growth" role="img" aria-label="New hosts per lineage, last 7 days"></svg>
+      </div>
+      <div class="panel">
+        <h3>Top hosting providers</h3>
+        <p class="cap">Hosts per provider. Click a bar to filter.</p>
+        <svg class="chart" id="ch-provider" role="img" aria-label="Top hosting providers"></svg>
+      </div>
+      <div class="panel">
+        <h3>Top countries</h3>
+        <p class="cap">Hosts per country of the server IP. Click a bar to filter.</p>
+        <svg class="chart" id="ch-country" role="img" aria-label="Top countries"></svg>
+      </div>
+      <div class="panel">
+        <h3>Largest IP clusters</h3>
+        <p class="cap">Hosts per /24 network. Dozens of panels in one range usually means one operator. Click a bar to list them.</p>
+        <svg class="chart" id="ch-net" role="img" aria-label="Hosts per /24 network"></svg>
+      </div>
+      <div class="panel">
+        <h3>Exposure: protocol and port</h3>
+        <p class="cap">How the login page is served. Plain http sends passwords and session tokens unencrypted. Click a bar to filter.</p>
+        <svg class="chart" id="ch-exposure" role="img" aria-label="Hosts by protocol and port"></svg>
+      </div>
+      <div class="panel wide">
+        <h3>Fork lineages</h3>
+        <p class="cap">Each live panel's page title matched to the public GitHub fork that ships it by default. "No public repo" means a rebrand whose source isn't public.</p>
+        <div class="table-wrap"><table class="lineage" id="tbl-lineage"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-panels" role="tabpanel" aria-labelledby="tab-panels">
+    <div class="controls">
+      <input id="q" type="search" placeholder="Search host, title, IP, provider…" aria-label="Search panels">
+    </div>
+    <div class="controls">
+      <select id="f-family" aria-label="Fork lineage"></select>
+      <select id="f-lang" aria-label="Interface language"></select>
+      <select id="f-country" aria-label="Country"></select>
+      <select id="f-provider" aria-label="Hosting provider"></select>
+      <select id="f-scheme" aria-label="Protocol"></select>
+      <select id="f-port" aria-label="Port"></select>
+      <select id="f-status" aria-label="Status">
+        <option value="">Any status</option>
+        <option value="active">Seen in last 14 days</option>
+        <option value="stale">Not seen for 14+ days</option>
+        <option value="new">New this week</option>
+      </select>
+      <select id="sort" aria-label="Sort">
+        <option value="last">Last seen</option>
+        <option value="first">First seen</option>
+        <option value="hosts">Most hosts</option>
+      </select>
+      <button id="reset" type="button">Clear filters</button>
+    </div>
+    <div class="count" id="count"></div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <footer>Panels stay listed for 180 days after they were last seen. Lineage is inferred from page titles and is a best guess for heavily customised builds.</footer>
+</main>
+<div class="tip" id="tip" hidden></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const day = iso => iso ? iso.slice(0, 10) : "";
+const utc = iso => iso ? iso.slice(0, 16).replace("T", " ") + " UTC" : "unknown";
+const ago = iso => { const d = daysAgo(iso); return d <= 0 ? "today" : d === 1 ? "yesterday" : d + " days ago"; };
+const daysAgo = iso => Math.floor((Date.now() - Date.parse(iso)) / 864e5);
+const isStale = p => daysAgo(p.last_seen) >= 14;
+const isNew = p => daysAgo(p.first_seen) < 7;
+const weight = p => p.members ? p.members.length : 1;
+const LANG = { zh: "Chinese UI", en: "English UI", ja: "Japanese UI", "?": "Unknown" };
+const FILTERS = { family: "f-family", lang: "f-lang", country: "f-country", provider: "f-provider", scheme: "f-scheme", port: "f-port" };
+let data = [], famColor = {};
+// days when a new data source was switched on: their "new" count is mostly a backlog of
+// panels that already existed, not real growth
+const BACKLOG = {
+  "2026-11-04": { short: "Shodan added (backlog)",
+    long: "Shodan was added as a source this day, so most of these hosts already existed and were first seen by this tracker, not first deployed." },
+  "2026-11-05": { short: "Shodan expanded (backlog)",
+    long: "Shodan searches were widened from 100 to 300 results this day, so most of these hosts were already running." } };
+const organic = p => !BACKLOG[day(p.first_seen)];
+
+/* ---------- panels view ---------- */
+function fillSelect(id, key, label, fmt = x => x) {
+  const counts = {};
+  data.forEach(p => { const v = p[key] || "?"; counts[v] = (counts[v] || 0) + weight(p); });
+  const opts = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  $("#" + id).innerHTML = `<option value="">${label}</option>` +
+    opts.map(([v, n]) => `<option value="${esc(v)}">${esc(fmt(v))} (${n})</option>`).join("");
+}
+
+function filtered() {
+  const q = $("#q").value.trim().toLowerCase();
+  const st = $("#f-status").value;
+  return data.filter(p =>
+    Object.entries(FILTERS).every(([k, id]) => !$("#" + id).value || (p[k] || "?") === $("#" + id).value) &&
+    (!st || (st === "stale" ? isStale(p) : st === "active" ? !isStale(p) : isNew(p))) &&
+    (!q || [p.host, p.title, p.ip, p.country, p.asn, p.url, p.family, ...(p.members || [])].join(" ").toLowerCase().includes(q)));
+}
+
+function render() {
+  const sort = $("#sort").value;
+  const rows = filtered().sort((a, b) => sort === "first" ? b.first_seen.localeCompare(a.first_seen)
+    : sort === "hosts" ? weight(b) - weight(a) : b.last_seen.localeCompare(a.last_seen));
+  const hosts = rows.reduce((n, p) => n + weight(p), 0);
+  $("#count").textContent = `${hosts} host${hosts === 1 ? "" : "s"} on ${rows.length} card${rows.length === 1 ? "" : "s"}`;
+  $("#grid").innerHTML = rows.length ? rows.map(p => `
+    <article class="card${isStale(p) ? " stale" : ""}">
+      <a class="shot${p.screenshot ? "" : " noshot"}" href="${esc(p.result)}" target="_blank" rel="noopener noreferrer">
+        ${p.screenshot ? `<img loading="lazy" src="${esc(p.screenshot)}" alt="Login page screenshot of ${esc(p.host)}">`
+                       : "<span>No screenshot yet</span>"}
+      </a>
+      <div class="body">
+        <div class="title">${esc(p.title || "(no title)")}</div>
+        <div class="host">${esc(p.members ? `${p.members.length} hosts in ${p.host}` : (p.url || p.host))}</div>
+        <div class="meta">${esc([p.members ? null : p.ip, p.country, p.provider].filter(Boolean).join(" · "))}</div>
+        <div class="chips">
+          ${isNew(p) ? '<span class="chip fresh">new this week</span>' : ""}
+          ${p.members ? `<span class="chip fresh">${p.members.length} hosts</span>` : ""}
+          ${isStale(p) ? `<span class="chip stale">not seen for ${daysAgo(p.last_seen)} days</span>` : ""}
+          <span class="chip">${esc(p.family)}</span>
+          <span class="chip">${esc(LANG[p.lang] || p.lang)}</span>
+          <span class="chip">port ${esc(p.port)}</span>
+        </div>
+        ${p.repos && p.repos.length ? `<div class="meta">Fork: ${p.repos.slice(0, 2).map(r =>
+          `<a href="https://github.com/${esc(r)}" target="_blank" rel="noopener noreferrer">${esc(r)}</a>`).join(", ")}</div>` : ""}
+        <div class="meta" title="First seen by a public scanner (urlscan/Shodan) — a lower bound on when the panel went live">Discovered ${utc(p.first_seen)} · ${ago(p.first_seen)}</div>
+        <div class="meta">Last seen ${day(p.last_seen)}${!p.paths?.length && p.server ? ` · ${esc(p.server)}` : ""}</div>
+        ${p.members ? `<details><summary>All ${p.members.length} hosts</summary>
+          <ul>${p.members.map(x => `<li>${esc(x)}</li>`).join("")}</ul></details>` : ""}
+        ${p.paths && p.paths.length ? `<details><summary>Pre-login page contents (${p.paths.length} paths${p.server ? ", " + esc(p.server) : ""})</summary>
+          <ul>${p.paths.map(x => `<li>${esc(x)}</li>`).join("")}</ul></details>` : ""}
+        <div class="links"><a href="${esc(p.result)}" target="_blank" rel="noopener noreferrer">Source record →</a></div>
+      </div>
+    </article>`).join("") : '<p class="empty">No panels match.</p>';
+}
+
+function setFilter(key, value, more = {}) {
+  Object.values(FILTERS).forEach(id => $("#" + id).value = "");
+  $("#f-status").value = ""; $("#q").value = "";
+  if (key === "q") $("#q").value = value; else $("#" + FILTERS[key]).value = value;
+  Object.entries(more).forEach(([k, v]) => $("#" + FILTERS[k]).value = v);
+  showTab("panels"); render();
+  $("#view-panels").scrollIntoView({ behavior: "smooth" });
+}
+
+/* ---------- charts ---------- */
+const tip = $("#tip");
+function showTip(e, html) {
+  tip.innerHTML = html; tip.hidden = false;
+  const r = tip.getBoundingClientRect();
+  let x = e.clientX + 14, y = e.clientY + 14;
+  if (x + r.width > innerWidth - 8) x = e.clientX - r.width - 14;
+  if (y + r.height > innerHeight - 8) y = e.clientY - r.height - 14;
+  tip.style.left = Math.max(8, x) + "px"; tip.style.top = Math.max(8, y) + "px";
+}
+const hideTip = () => { tip.hidden = true; };
+const tally = (rows, f) => { const c = {}; rows.forEach(p => { const k = f(p) || "Unknown"; c[k] = (c[k] || 0) + weight(p); }); return c; };
+
+function hbar(svgId, counts, { top = 10, key, onPick = null, colorOf = () => "var(--s1)", compare = null } = {}) {
+  const svg = $("#" + svgId);
+  let rows = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  if (rows.length > top) {
+    const rest = rows.slice(top - 1).reduce((n, r) => n + r[1], 0);
+    rows = rows.slice(0, top - 1).concat([["Other", rest]]);
+  }
+  const W = 520, LBL = 170, VAL = 40, RH = 26, H = rows.length * RH + 4;
+  const max = Math.max(1, ...rows.map(r => Math.max(r[1], compare ? (compare[r[0]] || 0) : 0)));
+  const x = v => (W - LBL - VAL) * v / max;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML = rows.map(([k, v], i) => {
+    const y = i * RH, bh = compare ? 8 : 14, prev = compare ? (compare[k] || 0) : null;
+    const label = k.length > 26 ? k.slice(0, 25) + "…" : k;
+    return `<g class="row" data-k="${esc(k)}">
+      <text x="${LBL - 8}" y="${y + 17}" text-anchor="end">${esc(label)}</text>
+      ${compare ? `<rect class="bar" x="${LBL}" y="${y + 4}" width="${Math.max(x(prev), prev ? 3 : 0)}" height="${bh}" rx="4" fill="var(--other)"></rect>` : ""}
+      <rect class="bar" x="${LBL}" y="${y + (compare ? 14 : 6)}" width="${Math.max(x(v), v ? 3 : 0)}" height="${bh}" rx="4" fill="${k === "Other" ? "var(--other)" : colorOf(k)}"></rect>
+      <text class="val" x="${LBL + x(Math.max(v, prev || 0)) + 6}" y="${y + 17}">${v}</text>
+      <rect class="hit" x="0" y="${y}" width="${W}" height="${RH}"></rect>
+    </g>`;
+  }).join("");
+  svg.querySelectorAll("g.row").forEach(g => {
+    const k = g.dataset.k, v = counts[k] ?? rows.find(r => r[0] === k)[1];
+    g.addEventListener("mousemove", e => showTip(e, `<b>${esc(k)}</b><br>${compare
+      ? `Last 7 days: <b>${counts[k] || 0}</b><br>Previous 7 days: <b>${compare[k] || 0}</b>` : `<b>${v}</b> hosts`}`));
+    g.addEventListener("mouseleave", hideTip);
+    if ((key || onPick) && k !== "Other") g.addEventListener("click", () => { hideTip(); onPick ? onPick(k) : setFilter(key, k); });
+  });
+}
+
+function dailyChart() {
+  const svg = $("#ch-daily"), narrow = innerWidth < 640, DAYS = narrow ? 14 : 30;
+  const today = new Date(); today.setUTCHours(0, 0, 0, 0);
+  const days = [...Array(DAYS)].map((_, i) => new Date(today - (DAYS - 1 - i) * 864e5).toISOString().slice(0, 10));
+  const famTotals = tally(data, p => p.family);
+  const fams = Object.entries(famTotals).sort((a, b) => b[1] - a[1]).slice(0, 6).map(r => r[0]);
+  const series = [...fams, "Other"];
+  const grid = Object.fromEntries(days.map(d => [d, Object.fromEntries(series.map(s => [s, 0]))]));
+  data.forEach(p => { const d = day(p.first_seen); if (grid[d]) grid[d][fams.includes(p.family) ? p.family : "Other"] += weight(p); });
+  const max = Math.max(1, ...days.map(d => series.reduce((n, s) => n + grid[d][s], 0)));
+  const step = max > 100 ? 50 : max > 40 ? 20 : max > 10 ? 10 : 2;
+  const nice = Math.ceil(max / step) * step;
+  const W = narrow ? 520 : 1040, H = narrow ? 260 : 240, L = 34, B = 22, T = 8, cw = (W - L) / DAYS, bw = Math.max(4, cw - 4);
+  const y = v => (H - B - T) * v / nice;
+  const ticks = nice / step <= 4 ? [...Array(nice / step + 1)].map((_, i) => i * step) : [0, Math.round(nice / 2), nice];
+  let out = ticks.map(t => `<line class="gridline" x1="${L}" x2="${W}" y1="${H - B - y(t)}" y2="${H - B - y(t)}"></line>
+    <text x="${L - 6}" y="${H - B - y(t) + 4}" text-anchor="end">${t}</text>`).join("");
+  days.forEach((d, i) => {
+    let acc = 0; const x = L + i * cw + (cw - bw) / 2;
+    series.forEach(s => {
+      const v = grid[d][s]; if (!v) return;
+      const h = y(v);
+      out += `<rect x="${x}" y="${H - B - y(acc) - h + (acc ? 0 : 0)}" width="${bw}" height="${Math.max(1, h - (acc ? 2 : 0))}" rx="${acc ? 0 : 3}" fill="${s === "Other" ? "var(--other)" : famColor[s]}"></rect>`;
+      acc += v;
+    });
+    if (i % 5 === DAYS % 5 || i === DAYS - 1) out += `<text x="${x + bw / 2}" y="${H - 6}" text-anchor="middle">${d.slice(5)}</text>`;
+    if (BACKLOG[d]) {
+      const tot = series.reduce((n, s) => n + grid[d][s], 0);
+      out += `<text x="${x - 6}" y="${H - B - y(tot) + 12}" text-anchor="end">${esc(BACKLOG[d].short)} →</text>`;
+    }
+    out += `<rect class="hit" data-d="${d}" x="${L + i * cw}" y="${T}" width="${cw}" height="${H - B - T}"></rect>`;
+  });
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML = out;
+  $("#leg-daily").innerHTML = series.map(s => `<span><i style="background:${s === "Other" ? "var(--other)" : famColor[s]}"></i>${esc(s)}</span>`).join("");
+  svg.querySelectorAll(".hit").forEach(r => {
+    r.addEventListener("mousemove", e => {
+      const d = r.dataset.d, tot = series.reduce((n, s) => n + grid[d][s], 0);
+      showTip(e, `<b>${d}</b> · ${tot} new host${tot === 1 ? "" : "s"}` +
+        (BACKLOG[d] ? `<div class="muted">${esc(BACKLOG[d].long)}</div>` : "") + series.filter(s => grid[d][s]).map(s =>
+        `<div class="row"><i style="background:${s === "Other" ? "var(--other)" : famColor[s]}"></i>${esc(s)} <b>${grid[d][s]}</b></div>`).join(""));
+    });
+    r.addEventListener("mouseleave", hideTip);
+  });
+}
+
+// /24 network a host sits in; shared CDN front ends (Cloudflare etc.) say nothing about the operator
+const SHARED = /cloudflare|akamai|fastly|cloudfront|vercel/i;
+function netOf(p) {
+  if (p.members) return p.host;
+  const m = /^(\d+\.\d+\.\d+)\.\d+$/.exec(p.ip || "");
+  return m && !SHARED.test(p.asn || "") ? m[1] + ".0/24" : null;
+}
+
+function trendChart() {
+  fetch("trend.json", { cache: "no-cache" }).then(r => r.ok ? r.json() : {}).catch(() => ({})).then(t => {
+    const days = Object.keys(t).sort();
+    if (days.length < 3) {
+      const last = days.length ? t[days[days.length - 1]] : null;
+      $("#trend-wrap").innerHTML = `<p class="muted" style="margin:8px 0 4px">Collecting one snapshot per day${days.length ? " since " + days[0] : ""}. The line appears once there are 3 days of data${last ? ` (latest: <b>${last.active}</b> active hosts, <b>${last.http}</b> on plain http)` : ""}.</p>`;
+      $("#leg-trend").innerHTML = "";
+      return;
+    }
+    const svg = $("#ch-trend"), W = 1040, H = 220, L = 40, R = 12, T = 10, B = 22;
+    const series = [["Active hosts", "active", "var(--s1)"], ["…of which plain http", "http", "var(--s2)"]];
+    const max = Math.max(1, ...days.map(d => t[d].active));
+    const step = max > 200 ? 100 : max > 80 ? 50 : max > 20 ? 10 : 5, top = Math.ceil(max / step) * step;
+    const x = i => L + (W - L - R) * i / (days.length - 1);
+    const y = v => H - B - (H - B - T) * v / top;
+    let out = [0, top / 2, top].map(v => `<line class="gridline" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"></line><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`).join("");
+    series.forEach(([, k, c]) => {
+      out += `<polyline fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round" points="${days.map((d, i) => `${x(i)},${y(t[d][k] || 0)}`).join(" ")}"></polyline>`;
+    });
+    const every = Math.max(1, Math.ceil(days.length / 8));
+    days.forEach((d, i) => { if (i % every === 0 || i === days.length - 1) out += `<text x="${x(i)}" y="${H - 6}" text-anchor="middle">${d.slice(5)}</text>`; });
+    out += `<line id="trend-x" class="gridline" x1="0" x2="0" y1="${T}" y2="${H - B}" visibility="hidden"></line>`;
+    out += `<rect class="hit" x="${L}" y="${T}" width="${W - L - R}" height="${H - B - T}"></rect>`;
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.innerHTML = out;
+    $("#leg-trend").innerHTML = series.map(([n, , c]) => `<span><i style="background:${c}"></i>${n}</span>`).join("");
+    const hit = svg.querySelector(".hit"), cross = svg.querySelector("#trend-x");
+    hit.addEventListener("mousemove", e => {
+      const box = svg.getBoundingClientRect(), px = (e.clientX - box.left) * W / box.width;
+      const i = Math.max(0, Math.min(days.length - 1, Math.round((px - L) / ((W - L - R) / (days.length - 1)))));
+      cross.setAttribute("x1", x(i)); cross.setAttribute("x2", x(i)); cross.setAttribute("visibility", "visible");
+      const d = days[i];
+      showTip(e, `<b>${d}</b>` + series.map(([n, k, c]) => `<div class="row"><i style="background:${c}"></i>${n} <b>${t[d][k] || 0}</b></div>`).join(""));
+    });
+    hit.addEventListener("mouseleave", () => { hideTip(); cross.setAttribute("visibility", "hidden"); });
+  });
+}
+
+function analysis() {
+  const total = data.reduce((n, p) => n + weight(p), 0);
+  const last7 = tally(data.filter(p => organic(p) && daysAgo(p.first_seen) < 7), p => p.family);
+  const prev7 = tally(data.filter(p => organic(p) && daysAgo(p.first_seen) >= 7 && daysAgo(p.first_seen) < 14), p => p.family);
+  const new7 = Object.values(last7).reduce((a, b) => a + b, 0);
+  const sum = c => Object.values(c).reduce((a, b) => a + b, 0);
+  const nets = tally(data, netOf); delete nets.Unknown;
+  const topNet = Object.entries(nets).sort((a, b) => b[1] - a[1])[0];
+  const httpShare = Math.round(100 * data.filter(p => p.scheme === "http").reduce((n, p) => n + weight(p), 0) / Math.max(1, total));
+  const fams = tally(data, p => p.family);
+  const top = Object.entries(last7).sort((a, b) => b[1] - a[1])[0];
+  const providers = tally(data, p => p.provider);
+  const topProv = Object.entries(providers).sort((a, b) => b[1] - a[1])[0];
+  $("#tiles").innerHTML = [
+    ["Hosts listed", total, `${data.length} cards`],
+    ["New in last 7 days", new7, `${sum(prev7)} the week before` +
+      (Object.keys(BACKLOG).some(d => daysAgo(d) < 14) ? " · source-backlog days excluded" : "")],
+    ["Spawning fastest (7d)", top ? top[1] : 0, top ? top[0] : "—"],
+    ["Largest IP cluster", topNet ? topNet[1] : 0, topNet ? topNet[0] : "—"],
+    ["Plain http logins", httpShare + "%", "of hosts serve the login unencrypted"],
+    ["Fork lineages seen", Object.keys(fams).length, `${Object.keys(fams).filter(f => f.includes("no public repo")).length} with no public repo`],
+    ["Biggest provider", topProv ? topProv[1] : 0, topProv ? topProv[0] : "—"],
+  ].map(([k, v, d]) => `<div class="tile"><div class="k">${esc(k)}</div><div class="v">${v}</div><div class="d">${esc(d)}</div></div>`).join("");
+
+  dailyChart();
+  hbar("ch-family", fams, { key: "family", colorOf: k => famColor[k] || "var(--other)" });
+  hbar("ch-growth", last7, { key: "family", top: 8, colorOf: k => famColor[k] || "var(--other)", compare: prev7 });
+  hbar("ch-provider", providers, { key: "provider" });
+  hbar("ch-country", tally(data, p => p.country), { key: "country" });
+  hbar("ch-net", nets, { top: 8, onPick: n => setFilter("q", n.replace(".0/24", ".")) });
+  hbar("ch-exposure", tally(data, p => `${p.scheme} :${p.port}`), { top: 8,
+    colorOf: k => k.startsWith("http ") ? "var(--s2)" : "var(--s1)",
+    onPick: k => { const [sch, port] = k.split(" :"); setFilter("scheme", sch, { port }); } });
+  trendChart();
+
+  const lin = {};
+  data.forEach(p => {
+    const l = lin[p.family] ||= { hosts: 0, brands: new Set(), repos: p.repos || [], first: p.first_seen, last: p.last_seen, new7: 0 };
+    l.hosts += weight(p); l.brands.add(p.brand);
+    if (p.first_seen < l.first) l.first = p.first_seen;
+    if (p.last_seen > l.last) l.last = p.last_seen;
+    if (isNew(p) && organic(p)) l.new7 += weight(p);
+  });
+  $("#tbl-lineage").innerHTML = `<tr><th>Lineage</th><th>Public fork(s)</th><th class="n">Hosts</th><th class="n">New 7d</th><th>First seen</th><th>Last seen</th></tr>` +
+    Object.entries(lin).sort((a, b) => b[1].hosts - a[1].hosts).map(([f, l]) => `<tr>
+      <td><a href="#" data-fam="${esc(f)}">${esc(f)}</a></td>
+      <td>${l.repos.length ? l.repos.map(r => `<a href="https://github.com/${esc(r)}" target="_blank" rel="noopener noreferrer">${esc(r)}</a>`).join("<br>") : '<span class="muted">—</span>'}</td>
+      <td class="n">${l.hosts}</td><td class="n">${l.new7 || ""}</td><td>${day(l.first)}</td><td>${day(l.last)}</td></tr>`).join("");
+  $("#tbl-lineage").querySelectorAll("a[data-fam]").forEach(a => a.addEventListener("click", e => { e.preventDefault(); setFilter("family", a.dataset.fam); }));
+}
+
+/* ---------- tabs + boot ---------- */
+function showTab(name) {
+  ["panels", "analysis"].forEach(n => {
+    $("#tab-" + n).setAttribute("aria-selected", String(n === name));
+    $("#view-" + n).hidden = n !== name;
+  });
+  try { localStorage.setItem("artex-tab", name); } catch (e) {}
+}
+$("#tab-panels").addEventListener("click", () => showTab("panels"));
+$("#tab-analysis").addEventListener("click", () => showTab("analysis"));
+
+fetch("feed.json", { cache: "no-cache" })
+  .then(r => r.json())
+  .then(feed => {
+    data = feed.panels || [];
+    // colour follows the lineage (fixed order by size), never its position in a given chart
+    Object.entries(tally(data, p => p.family)).sort((a, b) => b[1] - a[1]).slice(0, 7)
+      .forEach(([f], i) => famColor[f] = `var(--s${i + 1})`);
+    fillSelect("f-family", "family", "All lineages");
+    fillSelect("f-lang", "lang", "Any language", v => LANG[v] || v);
+    fillSelect("f-country", "country", "Any country");
+    fillSelect("f-provider", "provider", "Any provider");
+    fillSelect("f-scheme", "scheme", "http or https", v => v === "http" ? "http (unencrypted)" : v);
+    fillSelect("f-port", "port", "Any port", v => "port " + v);
+    const hosts = data.reduce((n, p) => n + weight(p), 0);
+    const stale = data.filter(isStale).length;
+    $("#stats").innerHTML = `<span><b>${hosts}</b> panels</span>
+      <span><b>${data.length - stale}</b> cards seen in last 14 days, <b>${stale}</b> not</span>
+      <span><b>${data.filter(isNew).reduce((n, p) => n + weight(p), 0)}</b> new this week</span>
+      <span>Updated <b>${esc(feed.generated.replace("T", " ").replace("Z", " UTC"))}</b></span>`;
+    const ageH = (Date.now() - Date.parse(feed.generated)) / 36e5;
+    if (ageH > 3) {
+      $("#stale-banner").hidden = false;
+      $("#stale-banner").textContent = `This data is ${Math.round(ageH)} hours old. The hourly update is running late, so panels may have changed since.`;
+    }
+    analysis();
+    render();
+    let saved = null; try { saved = localStorage.getItem("artex-tab"); } catch (e) {}
+    if (saved === "analysis") showTab("analysis");
+  })
+  .catch(() => { $("#stats").textContent = "Feed not available yet."; });
+
+["#q", ...Object.values(FILTERS).map(id => "#" + id), "#f-status", "#sort"].forEach(id => $(id).addEventListener("input", render));
+$("#reset").addEventListener("click", () => {
+  Object.values(FILTERS).forEach(id => $("#" + id).value = "");
+  $("#f-status").value = ""; $("#q").value = ""; render();
+});
+</script>
+</body>
+</html>
